@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>HTML/CSS Test</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--tg-theme-bg-color, #0f1115);
+    color: var(--tg-theme-text-color, #ffffff);
+    padding: 16px;
+    min-height: 100vh;
+  }
+  .card {
+    background: var(--tg-theme-secondary-bg-color, #1c1f26);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 12px;
+  }
+  h1 { font-size: 20px; margin-bottom: 8px; }
+  p.sub { color: var(--tg-theme-hint-color, #8a8f98); font-size: 14px; margin-bottom: 16px; }
+  .stats-row {
+    display: flex; justify-content: space-between;
+    font-size: 13px; color: var(--tg-theme-hint-color, #8a8f98);
+    margin-bottom: 10px;
+  }
+  .timer { font-weight: 600; }
+  .timer.warning { color: #ff5b5b; }
+  .progress-bar {
+    height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px;
+    overflow: hidden; margin-bottom: 20px;
+  }
+  .progress-fill {
+    height: 100%; background: var(--tg-theme-button-color, #4c8dff);
+    transition: width 0.3s ease;
+  }
+  .question { font-size: 17px; font-weight: 600; margin-bottom: 18px; line-height: 1.4; }
+  .option {
+    display: block; width: 100%; text-align: left;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+    color: var(--tg-theme-text-color, #ffffff);
+    padding: 14px 16px; border-radius: 12px;
+    font-size: 15px; margin-bottom: 10px; cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+  }
+  .option:active { background: rgba(255,255,255,0.12); }
+  .option.correct { background: rgba(76, 217, 100, 0.18); border-color: #4cd964; }
+  .option.wrong { background: rgba(255, 91, 91, 0.18); border-color: #ff5b5b; }
+  .option.disabled { pointer-events: none; opacity: 0.85; }
+  .explanation {
+    font-size: 13.5px; color: var(--tg-theme-hint-color, #8a8f98);
+    background: rgba(255,255,255,0.04); border-radius: 10px;
+    padding: 12px 14px; margin-top: 8px; line-height: 1.4;
+  }
+  .btn-primary {
+    display: block; width: 100%; text-align: center;
+    background: var(--tg-theme-button-color, #4c8dff);
+    color: var(--tg-theme-button-text-color, #ffffff);
+    padding: 14px; border: none; border-radius: 12px;
+    font-size: 16px; font-weight: 600; cursor: pointer; margin-top: 8px;
+  }
+  .center { text-align: center; }
+  .big-emoji { font-size: 48px; margin-bottom: 8px; }
+  .result-score { font-size: 32px; font-weight: 700; margin: 8px 0; }
+  .result-line { font-size: 14px; color: var(--tg-theme-hint-color, #8a8f98); margin: 4px 0; }
+  #screen-loading { text-align: center; padding-top: 60px; color: var(--tg-theme-hint-color, #8a8f98); }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+
+<div id="screen-loading">Yuklanmoqda...</div>
+
+<div id="screen-intro" class="card hidden">
+  <h1>📋 HTML &amp; CSS Test</h1>
+  <p class="sub" id="intro-sub"></p>
+  <button class="btn-primary" id="btn-start">🚀 Testni boshlash</button>
+</div>
+
+<div id="screen-quiz" class="card hidden">
+  <div class="stats-row">
+    <span id="progress-label"></span>
+    <span class="timer" id="timer-label"></span>
+  </div>
+  <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+  <div class="question" id="question-text"></div>
+  <div id="options-container"></div>
+  <div id="explanation-box" class="explanation hidden"></div>
+  <button class="btn-primary hidden" id="btn-next">Keyingi savol ➡️</button>
+</div>
+
+<div id="screen-result" class="card hidden center">
+  <div class="big-emoji" id="result-emoji">🎉</div>
+  <div id="result-title" style="font-size:18px;font-weight:600;"></div>
+  <div class="result-score" id="result-score"></div>
+  <div class="result-line" id="result-correct"></div>
+  <div class="result-line" id="result-time"></div>
+  <button class="btn-primary" id="btn-close">Yopish</button>
+</div>
+
+<script>
+const tg = window.Telegram.WebApp;
+tg.ready();
+tg.expand();
+
+const SCORE_PER_QUESTION = 5;
+const TOTAL_TIME_SECONDS = 15 * 60;
+
+const QUESTIONS = [
+  {q:"HTML nima uchun ishlatiladi?", opts:["Veb-sahifaning tuzilishini yaratish uchun","Veb-sahifaga stil berish uchun","Server bilan ishlash uchun","Ma'lumotlar bazasini boshqarish uchun"], correct:0, exp:"HTML veb-sahifaning tarkibi va tuzilishini belgilaydi."},
+  {q:"CSS qaysi so'zning qisqartmasi?", opts:["Colorful Style Sheets","Cascading Style Sheets","Computer Style Sheets","Creative Style System"], correct:1, exp:"CSS — Cascading Style Sheets."},
+  {q:"Eng katta sarlavha uchun qaysi teg ishlatiladi?", opts:["<title>","<head>","<h1>","<header>"], correct:2, exp:"<h1> eng katta va eng muhim sarlavha tegidir."},
+  {q:"Fon rangini o'zgartirish uchun qaysi CSS xususiyati ishlatiladi?", opts:["color","background-color","font-color","border-color"], correct:1, exp:"background-color elementning fon rangini belgilaydi."},
+  {q:"Rasm qo'yish uchun qaysi teg ishlatiladi?", opts:["<picture>","<image>","<img>","<src>"], correct:2, exp:"<img> tegi src atributi bilan rasm chiqaradi."},
+  {q:"Havola (link) yaratish uchun qaysi teg ishlatiladi?", opts:["<link>","<a>","<href>","<url>"], correct:1, exp:"<a> tegi href atributi bilan havola yaratadi."},
+  {q:"CSS faylini HTML sahifasiga ulash uchun qaysi teg ishlatiladi?", opts:["<style>","<css>","<link>","<script>"], correct:2, exp:"<link rel=\"stylesheet\"> tashqi CSS faylini ulaydi."},
+  {q:"Matn o'lchamini o'zgartirish uchun qaysi CSS xususiyati ishlatiladi?", opts:["text-size","font-size","text-style","font-style"], correct:1, exp:"font-size matn hajmini belgilaydi."},
+  {q:"HTML da tartibsiz ro'yxat uchun qaysi teg ishlatiladi?", opts:["<ol>","<list>","<ul>","<li>"], correct:2, exp:"<ul> tartibsiz ro'yxat, <li> uning ichidagi elementlar uchun."},
+  {q:"CSS selektorlarida class qanday belgilanadi?", opts:["# bilan",". bilan","@ bilan","& bilan"], correct:1, exp:"Class nuqta (.) bilan, id esa # bilan belgilanadi."},
+  {q:"CSS da id selektori qanday belgilanadi?", opts:["# bilan",". bilan","* bilan","~ bilan"], correct:0, exp:"id selektori # belgisi bilan yoziladi."},
+  {q:"Flexbox layout uchun display xususiyatiga qaysi qiymat beriladi?", opts:["flex","block","inline","grid-flex"], correct:0, exp:"display: flex; flexbox tizimini yoqadi."},
+  {q:"HTML jadval yaratish uchun asosiy teg qaysi?", opts:["<grid>","<table>","<tab>","<list>"], correct:1, exp:"<table> jadval yaratish uchun asosiy teg."},
+  {q:"CSS box modelida ichki bo'shliq qaysi xususiyat bilan belgilanadi?", opts:["margin","padding","border","gap"], correct:1, exp:"padding element ichidagi bo'shliqni, margin esa tashqi bo'shliqni belgilaydi."},
+  {q:"Elementlar orasidagi tashqi bo'shliq qaysi xususiyat bilan belgilanadi?", opts:["padding","spacing","margin","outline"], correct:2, exp:"margin elementning tashqi bo'shlig'ini belgilaydi."},
+  {q:"HTML formada matn kiritish maydoni qaysi teg orqali yaratiladi?", opts:["<textbox>","<input>","<field>","<text>"], correct:1, exp:"<input type=\"text\"> matn kiritish maydoni yaratadi."},
+  {q:"Elementni markazlashtirish uchun ko'p ishlatiladigan xususiyat qaysi?", opts:["align: center","margin: auto","center: true","position: center"], correct:1, exp:"margin: auto; blok elementni gorizontal markazlashtiradi."},
+  {q:"HTML sahifaning meta-ma'lumotlari qaysi teg ichida joylashadi?", opts:["<body>","<head>","<meta>","<info>"], correct:1, exp:"<head> ichida sarlavha, meta va CSS ulanishlari joylashadi."},
+  {q:"CSS da elementni yashirish uchun qaysi xususiyat ishlatiladi?", opts:["visible: false","display: none","hide: true","opacity: hide"], correct:1, exp:"display: none; elementni sahifadan butunlay olib tashlaydi."},
+  {q:"Responsiv dizayn uchun CSS da qaysi qoida ishlatiladi?", opts:["@responsive","@media","@screen","@adapt"], correct:1, exp:"@media so'rovlari ekran o'lchamiga qarab stillarni moslashtiradi."},
+  {q:"HTML sahifasining eng tashqi asosiy tegi qaysi?", opts:["<page>","<html>","<doc>","<web>"], correct:1, exp:"<html> butun sahifani o'rab turuvchi asosiy teg."},
+  {q:"CSS da matnni qalin qilish uchun qaysi xususiyat ishlatiladi?", opts:["font-weight: bold","text-bold: true","font-thick","bold: yes"], correct:0, exp:"font-weight: bold; matnni qalinlashtiradi."},
+  {q:"HTML da izoh (comment) qanday yoziladi?", opts:["// izoh","<!-- izoh -->","/* izoh */","# izoh"], correct:1, exp:"HTML izohlari <!-- --> orasida yoziladi."},
+  {q:"CSS Grid layout uchun display xususiyatiga qaysi qiymat beriladi?", opts:["grid","table","flex","block-grid"], correct:0, exp:"display: grid; grid tizimini yoqadi."},
+  {q:"HTML formada tugma yaratish uchun qaysi teg ishlatiladi?", opts:["<btn>","<button>","<submit>","<click>"], correct:1, exp:"<button> tugma yaratish uchun standart teg."}
+];
+const MAX_SCORE = QUESTIONS.length * SCORE_PER_QUESTION;
+
+function shuffle(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+let activeQuestions = [];
+let current = 0;
+let score = 0;
+let correctCount = 0;
+let startTime = null;
+let timerInterval = null;
+let answered = false;
+
+const $ = (id) => document.getElementById(id);
+
+function showScreen(id) {
+  ["screen-loading","screen-intro","screen-quiz","screen-result"].forEach(s => {
+    $(s).classList.toggle("hidden", s !== id);
+  });
+}
+
+function formatTime(sec) {
+  sec = Math.max(0, sec);
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return `${m}:${s.toString().padStart(2,"0")}`;
+}
+
+function initIntro() {
+  $("intro-sub").textContent =
+    `${QUESTIONS.length} ta savol, har biri ${SCORE_PER_QUESTION} ball. Vaqt: ${TOTAL_TIME_SECONDS/60} daqiqa.`;
+  showScreen("screen-intro");
+}
+
+function startQuiz() {
+  activeQuestions = shuffle(QUESTIONS);
+  current = 0; score = 0; correctCount = 0; answered = false;
+  startTime = Date.now();
+  showScreen("screen-quiz");
+  startTimer();
+  renderQuestion();
+}
+
+function startTimer() {
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+    const remaining = TOTAL_TIME_SECONDS - elapsed;
+    const label = $("timer-label");
+    label.textContent = "⏱ " + formatTime(remaining);
+    label.classList.toggle("warning", remaining <= 60);
+    if (remaining <= 0) {
+      clearInterval(timerInterval);
+      finishQuiz(true);
+    }
+  }, 1000);
+}
+
+function renderQuestion() {
+  answered = false;
+  const item = activeQuestions[current];
+  $("progress-label").textContent = `Savol ${current+1} / ${activeQuestions.length} · ${score}/${MAX_SCORE} ball`;
+  $("progress-fill").style.width = `${(current/activeQuestions.length)*100}%`;
+  $("question-text").textContent = item.q;
+  $("explanation-box").classList.add("hidden");
+  $("btn-next").classList.add("hidden");
+
+  const container = $("options-container");
+  container.innerHTML = "";
+  item.opts.forEach((opt, i) => {
+    const btn = document.createElement("button");
+    btn.className = "option";
+    btn.textContent = `${String.fromCharCode(65+i)}) ${opt}`;
+    btn.onclick = () => selectAnswer(i);
+    container.appendChild(btn);
+  });
+}
+
+function selectAnswer(idx) {
+  if (answered) return;
+  answered = true;
+  const item = activeQuestions[current];
+  const buttons = document.querySelectorAll("#options-container .option");
+  buttons.forEach((b, i) => {
+    b.classList.add("disabled");
+    if (i === item.correct) b.classList.add("correct");
+    else if (i === idx) b.classList.add("wrong");
+  });
+
+  if (idx === item.correct) {
+    score += SCORE_PER_QUESTION;
+    correctCount += 1;
+  }
+
+  const box = $("explanation-box");
+  box.textContent = (idx === item.correct ? "✅ To'g'ri! " : "❌ Noto'g'ri. ") + item.exp;
+  box.classList.remove("hidden");
+
+  $("progress-label").textContent = `Savol ${current+1} / ${activeQuestions.length} · ${score}/${MAX_SCORE} ball`;
+
+  const nextBtn = $("btn-next");
+  nextBtn.textContent = (current + 1 >= activeQuestions.length) ? "Natijani ko'rish 🏁" : "Keyingi savol ➡️";
+  nextBtn.classList.remove("hidden");
+
+  if (tg.HapticFeedback) {
+    tg.HapticFeedback.notificationOccurred(idx === item.correct ? "success" : "error");
+  }
+}
+
+function nextQuestion() {
+  current += 1;
+  if (current >= activeQuestions.length) {
+    finishQuiz(false);
+  } else {
+    renderQuestion();
+  }
+}
+
+function finishQuiz(timedOut) {
+  if (timerInterval) clearInterval(timerInterval);
+  const elapsed = Math.floor((Date.now() - startTime) / 1000);
+
+  $("result-emoji").textContent = timedOut ? "⏰" : "🎉";
+  $("result-title").textContent = timedOut ? "Vaqt tugadi!" : "Test yakunlandi!";
+  $("result-score").textContent = `${score} / ${MAX_SCORE}`;
+  $("result-correct").textContent = `✅ To'g'ri javoblar: ${correctCount} / ${activeQuestions.length}`;
+  $("result-time").textContent = `⏱ Sarflangan vaqt: ${formatTime(elapsed)}`;
+  showScreen("screen-result");
+
+  // Natijani botga yuboramiz — bot uni saqlaydi va foydalanuvchi ID'sini
+  // o'zi (Telegram orqali) aniqlaydi.
+  const payload = {
+    score: score,
+    correct: correctCount,
+    total: activeQuestions.length,
+    elapsed: elapsed
+  };
+  try {
+    tg.sendData(JSON.stringify(payload));
+  } catch (e) {
+    // sendData faqat web_app tugmasi orqali ochilganda ishlaydi
+  }
+}
+
+$("btn-start").addEventListener("click", startQuiz);
+$("btn-next").addEventListener("click", nextQuestion);
+$("btn-close").addEventListener("click", () => tg.close());
+
+initIntro();
+</script>
+</body>
+</html>
