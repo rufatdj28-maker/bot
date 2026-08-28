@@ -37,7 +37,7 @@ from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 # SOZLASH — FAQAT SHU 2 QATORNI TO'LDIRING
 # ==================================================================
 BOT_TOKEN = "8959834004:AAEk4ZNUw21Kez7rlDqv87PpE2qF3qyFz_I"      # <-- @BotFather'dan olgan tokenni qo'ying
-WEBAPP_URL = "https://rufatdj28-maker.github.io/bot/"     # <-- backend manzilingiz, masalan: "https://test-bot-backend.onrender.com"
+WEBAPP_URL = "https://bot-ot19.onrender.com/"     # <-- backend manzilingiz, masalan: "https://test-bot-backend.onrender.com"
 
 # ==================================================================
 
