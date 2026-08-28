@@ -68,15 +68,17 @@
   .result-score { font-size: 32px; font-weight: 700; margin: 8px 0; }
   .result-line { font-size: 14px; color: var(--tg-theme-hint-color, #8a8f98); margin: 4px 0; }
   #screen-loading { text-align: center; padding-top: 60px; color: var(--tg-theme-hint-color, #8a8f98); }
+  #screen-error { text-align: center; padding-top: 60px; color: #ff5b5b; }
   .hidden { display: none; }
 </style>
 </head>
 <body>
 
 <div id="screen-loading">Yuklanmoqda...</div>
+<div id="screen-error" class="hidden">Savollarni yuklab bo'lmadi. Internetni tekshiring va sahifani qayta oching.</div>
 
 <div id="screen-intro" class="card hidden">
-  <h1>📋 HTML &amp; CSS Test</h1>
+  <h1>📋 Bilim testi</h1>
   <p class="sub" id="intro-sub"></p>
   <button class="btn-primary" id="btn-start">🚀 Testni boshlash</button>
 </div>
@@ -99,6 +101,7 @@
   <div class="result-score" id="result-score"></div>
   <div class="result-line" id="result-correct"></div>
   <div class="result-line" id="result-time"></div>
+  <div class="result-line" id="result-save-status"></div>
   <button class="btn-primary" id="btn-close">Yopish</button>
 </div>
 
@@ -107,46 +110,10 @@ const tg = window.Telegram.WebApp;
 tg.ready();
 tg.expand();
 
-const SCORE_PER_QUESTION = 5;
-const TOTAL_TIME_SECONDS = 15 * 60;
-
-const QUESTIONS = [
-  {q:"HTML nima uchun ishlatiladi?", opts:["Veb-sahifaning tuzilishini yaratish uchun","Veb-sahifaga stil berish uchun","Server bilan ishlash uchun","Ma'lumotlar bazasini boshqarish uchun"], correct:0, exp:"HTML veb-sahifaning tarkibi va tuzilishini belgilaydi."},
-  {q:"CSS qaysi so'zning qisqartmasi?", opts:["Colorful Style Sheets","Cascading Style Sheets","Computer Style Sheets","Creative Style System"], correct:1, exp:"CSS — Cascading Style Sheets."},
-  {q:"Eng katta sarlavha uchun qaysi teg ishlatiladi?", opts:["<title>","<head>","<h1>","<header>"], correct:2, exp:"<h1> eng katta va eng muhim sarlavha tegidir."},
-  {q:"Fon rangini o'zgartirish uchun qaysi CSS xususiyati ishlatiladi?", opts:["color","background-color","font-color","border-color"], correct:1, exp:"background-color elementning fon rangini belgilaydi."},
-  {q:"Rasm qo'yish uchun qaysi teg ishlatiladi?", opts:["<picture>","<image>","<img>","<src>"], correct:2, exp:"<img> tegi src atributi bilan rasm chiqaradi."},
-  {q:"Havola (link) yaratish uchun qaysi teg ishlatiladi?", opts:["<link>","<a>","<href>","<url>"], correct:1, exp:"<a> tegi href atributi bilan havola yaratadi."},
-  {q:"CSS faylini HTML sahifasiga ulash uchun qaysi teg ishlatiladi?", opts:["<style>","<css>","<link>","<script>"], correct:2, exp:"<link rel=\"stylesheet\"> tashqi CSS faylini ulaydi."},
-  {q:"Matn o'lchamini o'zgartirish uchun qaysi CSS xususiyati ishlatiladi?", opts:["text-size","font-size","text-style","font-style"], correct:1, exp:"font-size matn hajmini belgilaydi."},
-  {q:"HTML da tartibsiz ro'yxat uchun qaysi teg ishlatiladi?", opts:["<ol>","<list>","<ul>","<li>"], correct:2, exp:"<ul> tartibsiz ro'yxat, <li> uning ichidagi elementlar uchun."},
-  {q:"CSS selektorlarida class qanday belgilanadi?", opts:["# bilan",". bilan","@ bilan","& bilan"], correct:1, exp:"Class nuqta (.) bilan, id esa # bilan belgilanadi."},
-  {q:"CSS da id selektori qanday belgilanadi?", opts:["# bilan",". bilan","* bilan","~ bilan"], correct:0, exp:"id selektori # belgisi bilan yoziladi."},
-  {q:"Flexbox layout uchun display xususiyatiga qaysi qiymat beriladi?", opts:["flex","block","inline","grid-flex"], correct:0, exp:"display: flex; flexbox tizimini yoqadi."},
-  {q:"HTML jadval yaratish uchun asosiy teg qaysi?", opts:["<grid>","<table>","<tab>","<list>"], correct:1, exp:"<table> jadval yaratish uchun asosiy teg."},
-  {q:"CSS box modelida ichki bo'shliq qaysi xususiyat bilan belgilanadi?", opts:["margin","padding","border","gap"], correct:1, exp:"padding element ichidagi bo'shliqni, margin esa tashqi bo'shliqni belgilaydi."},
-  {q:"Elementlar orasidagi tashqi bo'shliq qaysi xususiyat bilan belgilanadi?", opts:["padding","spacing","margin","outline"], correct:2, exp:"margin elementning tashqi bo'shlig'ini belgilaydi."},
-  {q:"HTML formada matn kiritish maydoni qaysi teg orqali yaratiladi?", opts:["<textbox>","<input>","<field>","<text>"], correct:1, exp:"<input type=\"text\"> matn kiritish maydoni yaratadi."},
-  {q:"Elementni markazlashtirish uchun ko'p ishlatiladigan xususiyat qaysi?", opts:["align: center","margin: auto","center: true","position: center"], correct:1, exp:"margin: auto; blok elementni gorizontal markazlashtiradi."},
-  {q:"HTML sahifaning meta-ma'lumotlari qaysi teg ichida joylashadi?", opts:["<body>","<head>","<meta>","<info>"], correct:1, exp:"<head> ichida sarlavha, meta va CSS ulanishlari joylashadi."},
-  {q:"CSS da elementni yashirish uchun qaysi xususiyat ishlatiladi?", opts:["visible: false","display: none","hide: true","opacity: hide"], correct:1, exp:"display: none; elementni sahifadan butunlay olib tashlaydi."},
-  {q:"Responsiv dizayn uchun CSS da qaysi qoida ishlatiladi?", opts:["@responsive","@media","@screen","@adapt"], correct:1, exp:"@media so'rovlari ekran o'lchamiga qarab stillarni moslashtiradi."},
-  {q:"HTML sahifasining eng tashqi asosiy tegi qaysi?", opts:["<page>","<html>","<doc>","<web>"], correct:1, exp:"<html> butun sahifani o'rab turuvchi asosiy teg."},
-  {q:"CSS da matnni qalin qilish uchun qaysi xususiyat ishlatiladi?", opts:["font-weight: bold","text-bold: true","font-thick","bold: yes"], correct:0, exp:"font-weight: bold; matnni qalinlashtiradi."},
-  {q:"HTML da izoh (comment) qanday yoziladi?", opts:["// izoh","<!-- izoh -->","/* izoh */","# izoh"], correct:1, exp:"HTML izohlari <!-- --> orasida yoziladi."},
-  {q:"CSS Grid layout uchun display xususiyatiga qaysi qiymat beriladi?", opts:["grid","table","flex","block-grid"], correct:0, exp:"display: grid; grid tizimini yoqadi."},
-  {q:"HTML formada tugma yaratish uchun qaysi teg ishlatiladi?", opts:["<btn>","<button>","<submit>","<click>"], correct:1, exp:"<button> tugma yaratish uchun standart teg."}
-];
-const MAX_SCORE = QUESTIONS.length * SCORE_PER_QUESTION;
-
-function shuffle(arr) {
-  const a = arr.slice();
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
+let QUESTIONS = [];
+let SCORE_PER_QUESTION = 5;
+let TOTAL_TIME_SECONDS = 900;
+let MAX_SCORE = 0;
 
 let activeQuestions = [];
 let current = 0;
@@ -159,9 +126,18 @@ let answered = false;
 const $ = (id) => document.getElementById(id);
 
 function showScreen(id) {
-  ["screen-loading","screen-intro","screen-quiz","screen-result"].forEach(s => {
+  ["screen-loading","screen-error","screen-intro","screen-quiz","screen-result"].forEach(s => {
     $(s).classList.toggle("hidden", s !== id);
   });
+}
+
+function shuffle(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
 }
 
 function formatTime(sec) {
@@ -171,10 +147,28 @@ function formatTime(sec) {
   return `${m}:${s.toString().padStart(2,"0")}`;
 }
 
-function initIntro() {
-  $("intro-sub").textContent =
-    `${QUESTIONS.length} ta savol, har biri ${SCORE_PER_QUESTION} ball. Vaqt: ${TOTAL_TIME_SECONDS/60} daqiqa.`;
-  showScreen("screen-intro");
+async function loadQuestions() {
+  try {
+    const res = await fetch("/api/questions");
+    if (!res.ok) throw new Error("bad response");
+    const data = await res.json();
+    QUESTIONS = data.questions;
+    SCORE_PER_QUESTION = data.score_per_question;
+    TOTAL_TIME_SECONDS = data.total_time_seconds;
+    MAX_SCORE = data.max_score;
+
+    if (!QUESTIONS.length) {
+      showScreen("screen-error");
+      $("screen-error").textContent = "Hozircha savollar mavjud emas.";
+      return;
+    }
+
+    $("intro-sub").textContent =
+      `${QUESTIONS.length} ta savol, har biri ${SCORE_PER_QUESTION} ball. Vaqt: ${Math.floor(TOTAL_TIME_SECONDS/60)} daqiqa.`;
+    showScreen("screen-intro");
+  } catch (e) {
+    showScreen("screen-error");
+  }
 }
 
 function startQuiz() {
@@ -238,7 +232,7 @@ function selectAnswer(idx) {
   }
 
   const box = $("explanation-box");
-  box.textContent = (idx === item.correct ? "✅ To'g'ri! " : "❌ Noto'g'ri. ") + item.exp;
+  box.textContent = (idx === item.correct ? "✅ To'g'ri! " : "❌ Noto'g'ri. ") + (item.exp || "");
   box.classList.remove("hidden");
 
   $("progress-label").textContent = `Savol ${current+1} / ${activeQuestions.length} · ${score}/${MAX_SCORE} ball`;
@@ -261,7 +255,7 @@ function nextQuestion() {
   }
 }
 
-function finishQuiz(timedOut) {
+async function finishQuiz(timedOut) {
   if (timerInterval) clearInterval(timerInterval);
   const elapsed = Math.floor((Date.now() - startTime) / 1000);
 
@@ -270,20 +264,25 @@ function finishQuiz(timedOut) {
   $("result-score").textContent = `${score} / ${MAX_SCORE}`;
   $("result-correct").textContent = `✅ To'g'ri javoblar: ${correctCount} / ${activeQuestions.length}`;
   $("result-time").textContent = `⏱ Sarflangan vaqt: ${formatTime(elapsed)}`;
+  $("result-save-status").textContent = "Natija saqlanmoqda...";
   showScreen("screen-result");
 
-  // Natijani botga yuboramiz — bot uni saqlaydi va foydalanuvchi ID'sini
-  // o'zi (Telegram orqali) aniqlaydi.
-  const payload = {
-    score: score,
-    correct: correctCount,
-    total: activeQuestions.length,
-    elapsed: elapsed
-  };
   try {
-    tg.sendData(JSON.stringify(payload));
+    const res = await fetch("/api/submit", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({
+        initData: tg.initData,
+        score: score,
+        correct: correctCount,
+        total: activeQuestions.length,
+        elapsed: elapsed
+      })
+    });
+    const result = await res.json();
+    $("result-save-status").textContent = result.ok ? "✅ Natija saqlandi" : "⚠️ Natijani saqlab bo'lmadi";
   } catch (e) {
-    // sendData faqat web_app tugmasi orqali ochilganda ishlaydi
+    $("result-save-status").textContent = "⚠️ Natijani saqlab bo'lmadi";
   }
 }
 
@@ -291,7 +290,7 @@ $("btn-start").addEventListener("click", startQuiz);
 $("btn-next").addEventListener("click", nextQuestion);
 $("btn-close").addEventListener("click", () => tg.close());
 
-initIntro();
+loadQuestions();
 </script>
 </body>
 </html>

@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin kirish</title>
+<style>
+  body { font-family: Arial, sans-serif; background: #0f1115; color: #fff;
+         display: flex; align-items: center; justify-content: center; height: 100vh; margin:0; }
+  .box { background: #1c1f26; padding: 32px; border-radius: 16px; width: 320px; }
+  h1 { font-size: 20px; margin-bottom: 20px; }
+  input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #333;
+          background: #12141a; color: #fff; margin-bottom: 14px; font-size: 15px; box-sizing: border-box; }
+  button { width: 100%; padding: 12px; border: none; border-radius: 8px;
+           background: #4c8dff; color: #fff; font-size: 15px; font-weight: 600; cursor: pointer; }
+  .error { color: #ff5b5b; font-size: 13px; margin-bottom: 12px; }
+</style>
+</head>
+<body>
+  <form class="box" method="POST">
+    <h1>🔒 Admin panel</h1>
+    {% if error %}<div class="error">{{ error }}</div>{% endif %}
+    <input type="password" name="password" placeholder="Parol" autofocus required>
+    <button type="submit">Kirish</button>
+  </form>
+</body>
+</html>
